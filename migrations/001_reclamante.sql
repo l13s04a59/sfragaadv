@@ -1,6 +1,6 @@
 -- Unified claimant intake table for SFraga Advocacia
--- Applied automatically to local PGlite when DATABASE_URL is unset.
--- On the production host the table already exists; indexes are optional.
+-- Applied to local PGlite when DATABASE_URL is unset, and to hosted Postgres
+-- via `npm run build` → scripts/migrate.mjs (tracked in schema_migrations).
 
 CREATE TABLE IF NOT EXISTS reclamante (
   id                              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
