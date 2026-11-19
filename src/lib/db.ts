@@ -38,19 +38,69 @@ export function databaseMode(): "postgres" | "pglite" {
 
 let pool: pg.Pool | undefined;
 let local: Promise<PGlite> | undefined;
+let externalReady: Promise<pg.Pool> | undefined;
 
-export async function sql<T = Record<string, unknown>>(
-  text: string,
-  params: unknown[] = [],
-): Promise<T[]> {
+async function getExternalPool(): Promise<pg.Pool> {
   const databaseUrl = normalizeDatabaseUrl(rawDatabaseUrl());
-  if (databaseUrl !== "") {
+  if (databaseUrl === "") {
+    throw new Error("No external database URL configured");
+  }
+  externalReady ??= (async () => {
     pool ??= new pg.Pool({
       connectionString: databaseUrl,
       max: 5,
       ssl: false,
     });
-    return (await pool.query(text, params)).rows as T[];
+    // Self-heal hosted DBs that were provisioned before migrate-on-build ran.
+    await ensureExternalMigrations(pool);
+    return pool;
+  })().catch((error: unknown) => {
+    externalReady = undefined;
+    throw error;
+  });
+  return externalReady;
+}
+
+async function ensureExternalMigrations(db: pg.Pool): Promise<void> {
+  const client = await db.connect();
+  try {
+    await client.query(
+      "create table if not exists schema_migrations (name text primary key, applied_at timestamptz not null default now())",
+    );
+    const done = new Set(
+      (await client.query("select name from schema_migrations")).rows.map(
+        (r: { name: string }) => r.name,
+      ),
+    );
+    const migrationsDir = path.join(process.cwd(), "migrations");
+    const files = (await readdir(migrationsDir).catch(() => []))
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .filter((f) => !done.has(f));
+    for (const file of files) {
+      const sqlText = await readFile(path.join(migrationsDir, file), "utf8");
+      await client.query("begin");
+      try {
+        await client.query(sqlText);
+        await client.query("insert into schema_migrations (name) values ($1)", [file]);
+        await client.query("commit");
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      }
+    }
+  } finally {
+    client.release();
+  }
+}
+
+export async function sql<T = Record<string, unknown>>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  if (hasExternalDatabase()) {
+    const db = await getExternalPool();
+    return (await db.query(text, params)).rows as T[];
   }
 
   local ??= startLocal().catch((error: unknown) => {
