@@ -31,12 +31,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao gravar";
-    // Never include connection strings or secrets in responses.
-    // Host/source names from our own errors are OK; strip raw driver dumps with passwords.
     const safe =
       /password|connection string|SASL|authentication/i.test(message) &&
       !/source=|host=/i.test(message)
-        ? "Falha ao conectar ou gravar no banco. Verifique RECLAMANTE_DATABASE_URL (sslmode=disable)."
+        ? "Falha ao conectar ou gravar no banco. Verifique LUSEAN_URL (sslmode=disable)."
         : message;
     return NextResponse.json({ error: safe }, { status: 500 });
   }
@@ -49,8 +47,12 @@ export async function GET() {
     database: diag.mode === "postgres" ? "configured" : "pglite_fallback",
     source: diag.source,
     host: diag.host,
+    luseanSet: diag.luseanSet,
+    luseanHost: diag.luseanHost,
     reclamanteSet: diag.reclamanteSet,
+    reclamanteHost: diag.reclamanteHost,
     databaseUrlSet: diag.databaseUrlSet,
+    databaseUrlHost: diag.databaseUrlHost,
     platformDatabaseBlocked: diag.platformDatabaseBlocked,
   });
 }

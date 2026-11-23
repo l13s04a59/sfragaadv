@@ -1,7 +1,11 @@
 import { readdir, readFile } from "node:fs/promises";
 import pg from "pg";
 
-const url = process.env.DATABASE_URL?.trim() || process.env.RECLAMANTE_DATABASE_URL?.trim() || "";
+const url =
+  process.env.LUSEAN_URL?.trim() ||
+  process.env.RECLAMANTE_DATABASE_URL?.trim() ||
+  process.env.DATABASE_URL?.trim() ||
+  "";
 const files = (await readdir("migrations").catch(() => []))
   .filter((f) => f.endsWith(".sql"))
   .sort();

@@ -3,7 +3,7 @@ import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
 
-export type DatabaseUrlSource = "RECLAMANTE_DATABASE_URL" | "DATABASE_URL";
+export type DatabaseUrlSource = "LUSEAN_URL" | "RECLAMANTE_DATABASE_URL" | "DATABASE_URL";
 
 export type ResolvedDatabaseUrl = {
   url: string;
@@ -32,31 +32,38 @@ function hostnameFromUrl(url: string): string {
   }
 }
 
+function readEnvUrl(name: DatabaseUrlSource): { raw: string; host: string } | null {
+  const raw = process.env[name]?.trim() || "";
+  if (!raw) return null;
+  return { raw, host: hostnameFromUrl(raw) };
+}
+
 /**
- * Prefer RECLAMANTE_DATABASE_URL for reclamante ingest.
- * When it is set, ignore DATABASE_URL entirely (Apps Postgres must not win).
- * If only DATABASE_URL is set, skip platform-internal hosts like postgres_postgres.
+ * Prefer a fresh non-stale secret name first: LUSEAN_URL.
+ * Then RECLAMANTE_DATABASE_URL. Then DATABASE_URL only if not platform-internal.
+ * Internal hosts (postgres_postgres) are never used for ingest.
  * Never logs or returns secret values — only source name + hostname.
  */
 export function resolveDatabaseUrl(): ResolvedDatabaseUrl | null {
-  const reclamante = process.env.RECLAMANTE_DATABASE_URL?.trim() || "";
-  if (reclamante) {
-    const host = hostnameFromUrl(reclamante);
-    return { url: reclamante, source: "RECLAMANTE_DATABASE_URL", host };
+  const candidates: DatabaseUrlSource[] = [
+    "LUSEAN_URL",
+    "RECLAMANTE_DATABASE_URL",
+    "DATABASE_URL",
+  ];
+
+  for (const source of candidates) {
+    const entry = readEnvUrl(source);
+    if (!entry) continue;
+    if (isPlatformInternalHost(entry.host)) {
+      console.warn(
+        `[db] ignoring ${source} host=${entry.host} (platform internal); use LUSEAN_URL with the external lusean host`,
+      );
+      continue;
+    }
+    return { url: entry.raw, source, host: entry.host };
   }
 
-  const databaseUrl = process.env.DATABASE_URL?.trim() || "";
-  if (!databaseUrl) return null;
-
-  const host = hostnameFromUrl(databaseUrl);
-  if (isPlatformInternalHost(host)) {
-    console.warn(
-      `[db] ignoring DATABASE_URL host=${host} (platform internal); set RECLAMANTE_DATABASE_URL for external Postgres`,
-    );
-    return null;
-  }
-
-  return { url: databaseUrl, source: "DATABASE_URL", host };
+  return null;
 }
 
 /** Ensure sslmode=disable for hosts that reject SSL (never log the URL). */
@@ -80,12 +87,14 @@ export function hasExternalDatabase(): boolean {
   return resolveDatabaseUrl() !== null;
 }
 
-/** True when only Apps DATABASE_URL is present and it was skipped as internal. */
+/** True when env URLs exist but all were skipped as platform-internal. */
 export function isPlatformDatabaseBlocked(): boolean {
-  if (process.env.RECLAMANTE_DATABASE_URL?.trim()) return false;
-  const databaseUrl = process.env.DATABASE_URL?.trim() || "";
-  if (!databaseUrl) return false;
-  return isPlatformInternalHost(hostnameFromUrl(databaseUrl));
+  if (resolveDatabaseUrl()) return false;
+  return Boolean(
+    readEnvUrl("LUSEAN_URL") ||
+      readEnvUrl("RECLAMANTE_DATABASE_URL") ||
+      readEnvUrl("DATABASE_URL"),
+  );
 }
 
 export function databaseMode(): "postgres" | "pglite" {
@@ -97,19 +106,29 @@ export function databaseDiagnostics(): {
   mode: "postgres" | "pglite";
   source: DatabaseUrlSource | null;
   host: string | null;
+  luseanSet: boolean;
+  luseanHost: string | null;
   reclamanteSet: boolean;
+  reclamanteHost: string | null;
   databaseUrlSet: boolean;
+  databaseUrlHost: string | null;
   platformDatabaseBlocked: boolean;
 } {
   const resolved = resolveDatabaseUrl();
-  const platformDatabaseBlocked = isPlatformDatabaseBlocked();
+  const lusean = readEnvUrl("LUSEAN_URL");
+  const reclamante = readEnvUrl("RECLAMANTE_DATABASE_URL");
+  const databaseUrl = readEnvUrl("DATABASE_URL");
   return {
     mode: resolved ? "postgres" : "pglite",
     source: resolved?.source ?? null,
     host: resolved?.host ?? null,
-    reclamanteSet: Boolean(process.env.RECLAMANTE_DATABASE_URL?.trim()),
-    databaseUrlSet: Boolean(process.env.DATABASE_URL?.trim()),
-    platformDatabaseBlocked,
+    luseanSet: Boolean(lusean),
+    luseanHost: lusean?.host ?? null,
+    reclamanteSet: Boolean(reclamante),
+    reclamanteHost: reclamante?.host ?? null,
+    databaseUrlSet: Boolean(databaseUrl),
+    databaseUrlHost: databaseUrl?.host ?? null,
+    platformDatabaseBlocked: isPlatformDatabaseBlocked(),
   };
 }
 
@@ -122,7 +141,7 @@ async function getExternalPool(): Promise<pg.Pool> {
   const resolved = resolveDatabaseUrl();
   if (!resolved) {
     throw new Error(
-      "Nenhum banco externo utilizável: defina RECLAMANTE_DATABASE_URL (host externo). DATABASE_URL interno da plataforma é ignorado.",
+      "Nenhum banco externo utilizável: defina LUSEAN_URL (host 187.41.98.57). Hosts internos da plataforma (postgres_postgres) são ignorados.",
     );
   }
   const databaseUrl = normalizeDatabaseUrl(resolved.url);
@@ -136,14 +155,13 @@ async function getExternalPool(): Promise<pg.Pool> {
       max: 5,
       ssl: false,
     });
-    // Self-heal hosted DBs that were provisioned before migrate-on-build ran.
     try {
       await ensureExternalMigrations(pool);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       if (/ENOTFOUND|getaddrinfo|ECONNREFUSED|ETIMEDOUT|ENETUNREACH/i.test(message)) {
         throw new Error(
-          `Falha ao conectar no Postgres (source=${resolved.source} host=${resolved.host}): host inacessível ou inexistente. Confira RECLAMANTE_DATABASE_URL.`,
+          `Falha ao conectar no Postgres (source=${resolved.source} host=${resolved.host}): host inacessível ou inexistente. Confira LUSEAN_URL.`,
         );
       }
       throw error;
@@ -203,7 +221,7 @@ export async function sql<T = Record<string, unknown>>(
       const message = error instanceof Error ? error.message : String(error);
       if (/ENOTFOUND|getaddrinfo|ECONNREFUSED|ETIMEDOUT|ENETUNREACH/i.test(message)) {
         throw new Error(
-          `Falha ao gravar no Postgres (source=${resolved?.source ?? "?"} host=${resolved?.host ?? "?"}): host inacessível. Confira RECLAMANTE_DATABASE_URL.`,
+          `Falha ao gravar no Postgres (source=${resolved?.source ?? "?"} host=${resolved?.host ?? "?"}): host inacessível. Confira LUSEAN_URL.`,
         );
       }
       throw error;
@@ -211,9 +229,9 @@ export async function sql<T = Record<string, unknown>>(
   }
 
   if (isPlatformDatabaseBlocked()) {
-    const host = hostnameFromUrl(process.env.DATABASE_URL?.trim() || "");
+    const diag = databaseDiagnostics();
     throw new Error(
-      `RECLAMANTE_DATABASE_URL é obrigatória: DATABASE_URL host=${host} é interno da plataforma e foi ignorado.`,
+      `LUSEAN_URL é obrigatória: só há hosts internos (luseanHost=${diag.luseanHost} reclamanteHost=${diag.reclamanteHost} databaseUrlHost=${diag.databaseUrlHost}).`,
     );
   }
 
@@ -226,7 +244,6 @@ export async function sql<T = Record<string, unknown>>(
 
 async function startLocal(): Promise<PGlite> {
   const db = new PGlite();
-  // IDs are supplied by the app (crypto.randomUUID); keep a stub for DEFAULT clauses.
   await db.exec(`
     CREATE OR REPLACE FUNCTION gen_random_uuid() RETURNS uuid AS $$
       SELECT '00000000-0000-4000-8000-000000000000'::uuid;
