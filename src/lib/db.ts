@@ -3,12 +3,60 @@ import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
 
-function rawDatabaseUrl(): string {
+export type DatabaseUrlSource = "RECLAMANTE_DATABASE_URL" | "DATABASE_URL";
+
+export type ResolvedDatabaseUrl = {
+  url: string;
+  source: DatabaseUrlSource;
+  host: string;
+};
+
+/** Hosts used by Cursor Apps / platform Postgres — not the user's external DB. */
+function isPlatformInternalHost(host: string): boolean {
+  const h = host.toLowerCase();
   return (
-    process.env.RECLAMANTE_DATABASE_URL?.trim() ||
-    process.env.DATABASE_URL?.trim() ||
-    ""
+    h === "postgres_postgres" ||
+    h.endsWith("_postgres") ||
+    h === "postgres" ||
+    h.endsWith(".postgres.svc") ||
+    h.includes("postgres.svc.cluster")
   );
+}
+
+function hostnameFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname || "(unknown)";
+  } catch {
+    const m = url.match(/@([^/:?]+)(?::\d+)?(?:\/|\?|$)/);
+    return m?.[1] ?? "(unparseable)";
+  }
+}
+
+/**
+ * Prefer RECLAMANTE_DATABASE_URL for reclamante ingest.
+ * When it is set, ignore DATABASE_URL entirely (Apps Postgres must not win).
+ * If only DATABASE_URL is set, skip platform-internal hosts like postgres_postgres.
+ * Never logs or returns secret values — only source name + hostname.
+ */
+export function resolveDatabaseUrl(): ResolvedDatabaseUrl | null {
+  const reclamante = process.env.RECLAMANTE_DATABASE_URL?.trim() || "";
+  if (reclamante) {
+    const host = hostnameFromUrl(reclamante);
+    return { url: reclamante, source: "RECLAMANTE_DATABASE_URL", host };
+  }
+
+  const databaseUrl = process.env.DATABASE_URL?.trim() || "";
+  if (!databaseUrl) return null;
+
+  const host = hostnameFromUrl(databaseUrl);
+  if (isPlatformInternalHost(host)) {
+    console.warn(
+      `[db] ignoring DATABASE_URL host=${host} (platform internal); set RECLAMANTE_DATABASE_URL for external Postgres`,
+    );
+    return null;
+  }
+
+  return { url: databaseUrl, source: "DATABASE_URL", host };
 }
 
 /** Ensure sslmode=disable for hosts that reject SSL (never log the URL). */
@@ -29,33 +77,81 @@ export function normalizeDatabaseUrl(url: string): string {
 }
 
 export function hasExternalDatabase(): boolean {
-  return rawDatabaseUrl() !== "";
+  return resolveDatabaseUrl() !== null;
+}
+
+/** True when only Apps DATABASE_URL is present and it was skipped as internal. */
+export function isPlatformDatabaseBlocked(): boolean {
+  if (process.env.RECLAMANTE_DATABASE_URL?.trim()) return false;
+  const databaseUrl = process.env.DATABASE_URL?.trim() || "";
+  if (!databaseUrl) return false;
+  return isPlatformInternalHost(hostnameFromUrl(databaseUrl));
 }
 
 export function databaseMode(): "postgres" | "pglite" {
   return hasExternalDatabase() ? "postgres" : "pglite";
 }
 
+/** Safe diagnostics for health checks (no secrets). */
+export function databaseDiagnostics(): {
+  mode: "postgres" | "pglite";
+  source: DatabaseUrlSource | null;
+  host: string | null;
+  reclamanteSet: boolean;
+  databaseUrlSet: boolean;
+  platformDatabaseBlocked: boolean;
+} {
+  const resolved = resolveDatabaseUrl();
+  const platformDatabaseBlocked = isPlatformDatabaseBlocked();
+  return {
+    mode: resolved ? "postgres" : "pglite",
+    source: resolved?.source ?? null,
+    host: resolved?.host ?? null,
+    reclamanteSet: Boolean(process.env.RECLAMANTE_DATABASE_URL?.trim()),
+    databaseUrlSet: Boolean(process.env.DATABASE_URL?.trim()),
+    platformDatabaseBlocked,
+  };
+}
+
 let pool: pg.Pool | undefined;
 let local: Promise<PGlite> | undefined;
 let externalReady: Promise<pg.Pool> | undefined;
+let loggedSource: string | undefined;
 
 async function getExternalPool(): Promise<pg.Pool> {
-  const databaseUrl = normalizeDatabaseUrl(rawDatabaseUrl());
-  if (databaseUrl === "") {
-    throw new Error("No external database URL configured");
+  const resolved = resolveDatabaseUrl();
+  if (!resolved) {
+    throw new Error(
+      "Nenhum banco externo utilizável: defina RECLAMANTE_DATABASE_URL (host externo). DATABASE_URL interno da plataforma é ignorado.",
+    );
   }
+  const databaseUrl = normalizeDatabaseUrl(resolved.url);
   externalReady ??= (async () => {
+    if (loggedSource !== resolved.source) {
+      console.info(`[db] using ${resolved.source} host=${resolved.host}`);
+      loggedSource = resolved.source;
+    }
     pool ??= new pg.Pool({
       connectionString: databaseUrl,
       max: 5,
       ssl: false,
     });
     // Self-heal hosted DBs that were provisioned before migrate-on-build ran.
-    await ensureExternalMigrations(pool);
+    try {
+      await ensureExternalMigrations(pool);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/ENOTFOUND|getaddrinfo|ECONNREFUSED|ETIMEDOUT|ENETUNREACH/i.test(message)) {
+        throw new Error(
+          `Falha ao conectar no Postgres (source=${resolved.source} host=${resolved.host}): host inacessível ou inexistente. Confira RECLAMANTE_DATABASE_URL.`,
+        );
+      }
+      throw error;
+    }
     return pool;
   })().catch((error: unknown) => {
     externalReady = undefined;
+    pool = undefined;
     throw error;
   });
   return externalReady;
@@ -100,7 +196,25 @@ export async function sql<T = Record<string, unknown>>(
 ): Promise<T[]> {
   if (hasExternalDatabase()) {
     const db = await getExternalPool();
-    return (await db.query(text, params)).rows as T[];
+    try {
+      return (await db.query(text, params)).rows as T[];
+    } catch (error: unknown) {
+      const resolved = resolveDatabaseUrl();
+      const message = error instanceof Error ? error.message : String(error);
+      if (/ENOTFOUND|getaddrinfo|ECONNREFUSED|ETIMEDOUT|ENETUNREACH/i.test(message)) {
+        throw new Error(
+          `Falha ao gravar no Postgres (source=${resolved?.source ?? "?"} host=${resolved?.host ?? "?"}): host inacessível. Confira RECLAMANTE_DATABASE_URL.`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  if (isPlatformDatabaseBlocked()) {
+    const host = hostnameFromUrl(process.env.DATABASE_URL?.trim() || "");
+    throw new Error(
+      `RECLAMANTE_DATABASE_URL é obrigatória: DATABASE_URL host=${host} é interno da plataforma e foi ignorado.`,
+    );
   }
 
   local ??= startLocal().catch((error: unknown) => {

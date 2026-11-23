@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { databaseDiagnostics } from "@/lib/db";
 import { insertReclamante } from "@/lib/ingest";
 import type { Answers, FormSource } from "@/lib/form-types";
 
@@ -31,20 +32,25 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao gravar";
     // Never include connection strings or secrets in responses.
+    // Host/source names from our own errors are OK; strip raw driver dumps with passwords.
     const safe =
-      /password|connection string|ECONNREFUSED|SASL|authentication/i.test(message)
-        ? "Falha ao conectar ou gravar no banco. Verifique DATABASE_URL / RECLAMANTE_DATABASE_URL (sslmode=disable)."
+      /password|connection string|SASL|authentication/i.test(message) &&
+      !/source=|host=/i.test(message)
+        ? "Falha ao conectar ou gravar no banco. Verifique RECLAMANTE_DATABASE_URL (sslmode=disable)."
         : message;
     return NextResponse.json({ error: safe }, { status: 500 });
   }
 }
 
 export async function GET() {
-  const hasDb = Boolean(
-    process.env.RECLAMANTE_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim(),
-  );
+  const diag = databaseDiagnostics();
   return NextResponse.json({
     ok: true,
-    database: hasDb ? "configured" : "pglite_fallback",
+    database: diag.mode === "postgres" ? "configured" : "pglite_fallback",
+    source: diag.source,
+    host: diag.host,
+    reclamanteSet: diag.reclamanteSet,
+    databaseUrlSet: diag.databaseUrlSet,
+    platformDatabaseBlocked: diag.platformDatabaseBlocked,
   });
 }
