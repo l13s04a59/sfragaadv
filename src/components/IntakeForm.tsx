@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormFieldControl } from "./FormFields";
 import { getFormDefinition } from "@/lib/form-definitions";
@@ -41,7 +41,9 @@ export function IntakeForm({ source }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [blocked, setBlocked] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [submitting, setSubmitting] = useState(false);
+  /** Sync lock: useTransition pending drops before fetch finishes, so double-clicks raced. */
+  const submitLock = useRef(false);
 
   const page = definition.pages[pageIndex];
   const fields = useMemo(() => visibleFields(page.fields, answers), [page, answers]);
@@ -59,6 +61,9 @@ export function IntakeForm({ source }: Props) {
   }
 
   async function submit(earlyExit: boolean) {
+    if (submitLock.current) return;
+    submitLock.current = true;
+    setSubmitting(true);
     setSubmitError(null);
     try {
       const res = await fetch("/api/reclamante", {
@@ -76,11 +81,15 @@ export function IntakeForm({ source }: Props) {
       }
       router.push(`/obrigado?id=${encodeURIComponent(data.id || "")}`);
     } catch (err) {
+      submitLock.current = false;
+      setSubmitting(false);
       setSubmitError(err instanceof Error ? err.message : "Falha ao enviar");
     }
   }
 
   function goNext() {
+    if (submitLock.current || submitting) return;
+
     const pageErrors = validatePage(fields, answers);
     if (Object.keys(pageErrors).length) {
       setErrors(pageErrors);
@@ -96,16 +105,12 @@ export function IntakeForm({ source }: Props) {
     }
 
     if (page.earlyExitWhen?.(answers)) {
-      startTransition(() => {
-        void submit(true);
-      });
+      void submit(true);
       return;
     }
 
     if (pageIndex >= definition.pages.length - 1) {
-      startTransition(() => {
-        void submit(false);
-      });
+      void submit(false);
       return;
     }
 
@@ -114,6 +119,7 @@ export function IntakeForm({ source }: Props) {
   }
 
   function goBack() {
+    if (submitLock.current || submitting) return;
     setBlocked(null);
     setSubmitError(null);
     setPageIndex((i) => Math.max(0, i - 1));
@@ -179,14 +185,19 @@ export function IntakeForm({ source }: Props) {
 
         <div className="form-actions">
           {pageIndex > 0 ? (
-            <button type="button" className="btn btn-secondary" onClick={goBack} disabled={pending}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={goBack}
+              disabled={submitting}
+            >
               Voltar
             </button>
           ) : (
             <span />
           )}
-          <button type="submit" className="btn btn-primary" disabled={pending}>
-            {pending
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting
               ? "Enviando…"
               : pageIndex >= definition.pages.length - 1 || page.earlyExitWhen?.(answers)
                 ? "Enviar"
