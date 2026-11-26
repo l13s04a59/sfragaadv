@@ -1,6 +1,6 @@
 # SFraga Advocacia — Formulários de intake
 
-Aplicação Next.js (App Router) que substitui os questionários Tally de triagem trabalhista, com ingestão em PostgreSQL (`public.reclamante`).
+Aplicação Next.js (App Router) que substitui os questionários Tally de triagem trabalhista, com ingestão em PostgreSQL (`sfragaadv.reclamante`).
 
 ## Rotas
 
