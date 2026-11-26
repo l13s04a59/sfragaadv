@@ -1,33 +1,27 @@
-# Hostinger — portal estático
+# Hostinger — app-lusean
 
-Pasta pronta para upload no File Manager / FTP da Hostinger.
+Pasta estática para o site / app Hostinger chamado **app-lusean**.
 
 ## Conteúdo
 
 ```
-hostinger/portal/
-  index.html          → landing com 3 botões
+hostinger/app-lusean/
+  index.html          → LUSEAN SISTEMAS (3 botões)
   styles.css
-  sfragaadv/          → placeholder schema sfragaadv
-  lusefin/            → placeholder schema lusefin
   casarotaria/        → placeholder schema casarotaria
+  sfragaadv/          → placeholder (dados reais só na app Next)
+  lusefin/            → placeholder schema lusefin
 ```
 
-## Upload
+## Upload (site name: app-lusean)
 
-1. No hPanel Hostinger → **Arquivos** → **Gerenciador de arquivos**.
-2. Abra `public_html` (ou a pasta do subdomínio, ex. `portal.seudominio.com`).
-3. Envie o conteúdo de `hostinger/portal/` (pode ficar em `/` ou em `/portal/`).
-4. Abra no navegador: `https://seudominio.com/` ou `https://seudominio.com/portal/`.
+1. No hPanel Hostinger, use o site/app **app-lusean** (ou crie um site com esse nome).
+2. **Arquivos** → **Gerenciador de arquivos** → pasta do site (ex. `public_html`).
+3. Envie o conteúdo de `hostinger/app-lusean/`.
+4. Abra a URL do site e confira os três botões.
 
-Não há Node/PHP nesta MVP: só HTML/CSS. Chamadas ao Postgres (`LUSEAN_URL`) ficam para a próxima etapa.
+MVP estática: sem Node e sem `LUSEAN_URL`. A prévia de dados do SFRAGA ADVOCACIA
+(contagens / lista de tabelas) roda na app Next (`/portal/sfragaadv`) com o secret
+`LUSEAN_URL` no servidor — nunca no HTML/JS do browser.
 
-## Variável de ambiente (próxima etapa)
-
-Quando houver backend na Hostinger (Node ou PHP):
-
-| Nome         | Uso                                      |
-|--------------|------------------------------------------|
-| `LUSEAN_URL` | Connection string do Postgres lusean     |
-
-Nunca coloque a senha em HTML/JS do cliente. Detalhes: Project store `docs/portal-esquemas.md`.
+Detalhes: Project store `docs/portal-esquemas.md`.

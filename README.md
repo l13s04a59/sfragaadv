@@ -5,8 +5,8 @@ Aplicação Next.js (App Router) que substitui os questionários Tally de triage
 ## Rotas
 
 - `/` — links de teste
-- `/portal` — portal de manutenção (3 sistemas / schemas)
-- `/portal/sfragaadv`, `/portal/lusefin`, `/portal/casarotaria` — placeholders por schema
+- `/portal` — **LUSEAN SISTEMAS** (3 sistemas / schemas)
+- `/portal/casarotaria`, `/portal/sfragaadv`, `/portal/lusefin` — por schema (prévia de dados só em sfragaadv)
 - `/formulario/trabalhista` — reclamante geral (`gestante=false`, `form_source=trabalhista`)
 - `/formulario/gestante` — gestante (`gestante=true`, `form_source=gestante`)
 - `/obrigado` — confirmação após envio
@@ -22,14 +22,18 @@ npm run dev
 
 Preferir `LUSEAN_URL` (Postgres lusean). Sem URL externa válida, o envio usa PGlite em memória (demo local).
 
-### Portal de manutenção
+### Portal — LUSEAN SISTEMAS
 
-UI em português com botões **Sfragaadv**, **LuseFin** e **CasaRotaria** (schemas `sfragaadv`, `lusefin`, `casarotaria`). MVP só navega para placeholders — sem CRUD e sem ping ao banco.
+UI em português, título centrado **LUSEAN SISTEMAS**, botões:
 
-### Hostinger (estático)
+1. **CASA ROTÁRIA** → `casarotaria` (placeholder)
+2. **SFRAGA ADVOCACIA** → `sfragaadv` (prévia: contagens + tabelas em `public`/`sfragaadv` via `LUSEAN_URL`)
+3. **LUSEAN FINANÇAS** → `lusefin` (placeholder)
 
-A pasta `hostinger/portal/` é HTML/CSS pronto para upload no File Manager (não precisa de Node). Passo a passo: `hostinger/README.md` e o Project store `docs/portal-esquemas.md`.
+### Hostinger (estático) — site **app-lusean**
 
-O app Next completo (formulários + API) continua em Node (Cursor Apps / VPS). Não use `output: 'export'` no Next raiz — as rotas `/api/*` quebrariam.
+Pasta `hostinger/app-lusean/` (HTML/CSS) para upload no site Hostinger nomeado **app-lusean**. Passo a passo: `hostinger/README.md` e Project store `docs/portal-esquemas.md`. Prévia de dados Sfraga não roda no estático — só na app Next.
+
+O app Next completo (formulários + API + prévia) continua em Node (Cursor Apps / VPS). Não use `output: 'export'` no Next raiz — as rotas `/api/*` quebrariam.
 
 Documentação: Project store `docs/formularios-intake.md` e `docs/portal-esquemas.md`.

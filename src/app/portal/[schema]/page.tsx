@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SfragaOverviewPanel } from "@/components/SfragaOverviewPanel";
 import {
   getPortalSchema,
   PORTAL_SCHEMA_IDS,
 } from "@/lib/portal-schemas";
+import { getSfragaOverview } from "@/lib/portal-sfraga-overview";
 
 type PageProps = {
   params: Promise<{ schema: string }>;
@@ -17,10 +19,10 @@ export async function generateMetadata({ params }: PageProps) {
   const { schema: id } = await params;
   const schema = getPortalSchema(id);
   if (!schema) {
-    return { title: "Schema não encontrado — Portal SFraga" };
+    return { title: "Sistema não encontrado — LUSEAN SISTEMAS" };
   }
   return {
-    title: `${schema.label} — Portal SFraga`,
+    title: `${schema.label} — LUSEAN SISTEMAS`,
     description: `Ambiente selecionado: schema ${schema.id}`,
   };
 }
@@ -30,26 +32,32 @@ export default async function PortalSchemaPage({ params }: PageProps) {
   const schema = getPortalSchema(id);
   if (!schema) notFound();
 
+  const overview =
+    schema.hasDataPreview && schema.id === "sfragaadv"
+      ? await getSfragaOverview()
+      : null;
+
   return (
     <main className="portal">
-      <section className="portal-hero portal-placeholder">
+      <section className="portal-hero portal-hero-center portal-placeholder">
         <p className="portal-eyebrow">Ambiente selecionado</p>
         <h1 className="portal-brand portal-brand-sm">{schema.label}</h1>
         <p className="portal-lead">
-          Você escolheu o schema{" "}
-          <code className="portal-schema-code">{schema.id}</code>.
+          Schema <code className="portal-schema-code">{schema.id}</code>
         </p>
-        <p className="portal-note">
-          Página provisória — ainda sem CRUD. Na próxima etapa as operações
-          usarão <code>LUSEAN_URL</code> apontando para o banco lusean neste
-          schema.
-        </p>
-        <div className="portal-actions">
+
+        {overview ? (
+          <SfragaOverviewPanel overview={overview} />
+        ) : (
+          <p className="portal-note">
+            Página provisória — ainda sem CRUD neste sistema. A prévia de dados
+            está disponível apenas em SFRAGA ADVOCACIA.
+          </p>
+        )}
+
+        <div className="portal-actions portal-actions-center">
           <Link className="btn btn-primary" href="/portal">
             Voltar aos sistemas
-          </Link>
-          <Link className="btn btn-ghost" href="/">
-            Início
           </Link>
         </div>
       </section>

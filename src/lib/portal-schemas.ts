@@ -2,24 +2,29 @@ export type PortalSchema = {
   id: string;
   label: string;
   description: string;
+  /** When true, the portal page may load read-only overview data. */
+  hasDataPreview: boolean;
 };
 
-/** Schemas / systems selectable in the maintenance portal (MVP). */
+/** Systems selectable in LUSEAN SISTEMAS (order matches UI). */
 export const PORTAL_SCHEMAS: readonly PortalSchema[] = [
   {
+    id: "casarotaria",
+    label: "CASA ROTÁRIA",
+    description: "Schema casarotaria — em breve",
+    hasDataPreview: false,
+  },
+  {
     id: "sfragaadv",
-    label: "Sfragaadv",
-    description: "Advocacia — schema sfragaadv",
+    label: "SFRAGA ADVOCACIA",
+    description: "Schema sfragaadv + public (prévia de dados)",
+    hasDataPreview: true,
   },
   {
     id: "lusefin",
-    label: "LuseFin",
-    description: "Financeiro — schema lusefin",
-  },
-  {
-    id: "casarotaria",
-    label: "CasaRotaria",
-    description: "Casa Rotaria — schema casarotaria",
+    label: "LUSEAN FINANÇAS",
+    description: "Schema lusefin — em breve",
+    hasDataPreview: false,
   },
 ] as const;
 
