@@ -347,6 +347,151 @@ a {
   margin-top: 1.25rem;
 }
 
+/* —— Portal de manutenção (esquemas) —— */
+
+.portal {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.portal-hero {
+  width: min(720px, 100%);
+  animation: rise 650ms ease both;
+}
+
+.portal-eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+
+.portal-brand {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(2.6rem, 7vw, 4.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+  color: var(--ink);
+}
+
+.portal-brand-sm {
+  font-size: clamp(2.1rem, 5.5vw, 3.2rem);
+}
+
+.portal-lead {
+  max-width: 36rem;
+  font-size: 1.08rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0 0 2rem;
+}
+
+.portal-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.portal-card {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 1.05rem 1.15rem;
+  border: 1px solid rgba(12, 28, 36, 0.14);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.55);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+  animation: rise 700ms ease both;
+}
+
+.portal-grid li:nth-child(1) .portal-card {
+  animation-delay: 60ms;
+}
+
+.portal-grid li:nth-child(2) .portal-card {
+  animation-delay: 120ms;
+}
+
+.portal-grid li:nth-child(3) .portal-card {
+  animation-delay: 180ms;
+}
+
+.portal-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.portal-card:focus-visible {
+  outline: 3px solid rgba(31, 111, 107, 0.35);
+  outline-offset: 2px;
+}
+
+.portal-card-label {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.portal-card-meta {
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+.portal-card-meta code,
+.portal-schema-code,
+.portal-foot code,
+.portal-note code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 0.08em 0.35em;
+  border-radius: 0.35rem;
+  background: rgba(12, 28, 36, 0.06);
+}
+
+.portal-schema-code {
+  font-size: 1.05rem;
+  background: rgba(31, 111, 107, 0.12);
+  color: var(--accent-deep);
+}
+
+.portal-card-hint {
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.portal-foot {
+  margin: 1.75rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.portal-placeholder .portal-note {
+  max-width: 34rem;
+  margin: -0.75rem 0 1.75rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.portal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

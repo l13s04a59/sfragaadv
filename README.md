@@ -5,6 +5,8 @@ Aplicação Next.js (App Router) que substitui os questionários Tally de triage
 ## Rotas
 
 - `/` — links de teste
+- `/portal` — portal de manutenção (3 sistemas / schemas)
+- `/portal/sfragaadv`, `/portal/lusefin`, `/portal/casarotaria` — placeholders por schema
 - `/formulario/trabalhista` — reclamante geral (`gestante=false`, `form_source=trabalhista`)
 - `/formulario/gestante` — gestante (`gestante=true`, `form_source=gestante`)
 - `/obrigado` — confirmação após envio
@@ -18,6 +20,16 @@ npm install
 npm run dev
 ```
 
-Sem `DATABASE_URL` / `RECLAMANTE_DATABASE_URL`, o envio usa PGlite em memória (demo local).
+Preferir `LUSEAN_URL` (Postgres lusean). Sem URL externa válida, o envio usa PGlite em memória (demo local).
 
-Documentação completa: ver o Project store em `docs/formularios-intake.md`.
+### Portal de manutenção
+
+UI em português com botões **Sfragaadv**, **LuseFin** e **CasaRotaria** (schemas `sfragaadv`, `lusefin`, `casarotaria`). MVP só navega para placeholders — sem CRUD e sem ping ao banco.
+
+### Hostinger (estático)
+
+A pasta `hostinger/portal/` é HTML/CSS pronto para upload no File Manager (não precisa de Node). Passo a passo: `hostinger/README.md` e o Project store `docs/portal-esquemas.md`.
+
+O app Next completo (formulários + API) continua em Node (Cursor Apps / VPS). Não use `output: 'export'` no Next raiz — as rotas `/api/*` quebrariam.
+
+Documentação: Project store `docs/formularios-intake.md` e `docs/portal-esquemas.md`.

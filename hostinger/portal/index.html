@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portal de manutenção — SFraga</title>
+    <meta
+      name="description"
+      content="Selecione o sistema / schema PostgreSQL para manutenção."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="portal">
+      <section class="portal-hero">
+        <p class="portal-eyebrow">Manutenção</p>
+        <h1 class="portal-brand">SFraga</h1>
+        <p class="portal-lead">
+          Escolha o sistema (schema PostgreSQL) para continuar. Nesta etapa o
+          portal só registra a escolha — operações CRUD virão depois.
+        </p>
+
+        <ul class="portal-grid" role="list">
+          <li>
+            <a
+              class="portal-card"
+              href="sfragaadv/"
+              aria-label="Sfragaadv: schema sfragaadv"
+            >
+              <span class="portal-card-label">Sfragaadv</span>
+              <span class="portal-card-meta">schema <code>sfragaadv</code></span>
+              <span class="portal-card-hint">Advocacia — schema sfragaadv</span>
+            </a>
+          </li>
+          <li>
+            <a
+              class="portal-card"
+              href="lusefin/"
+              aria-label="LuseFin: schema lusefin"
+            >
+              <span class="portal-card-label">LuseFin</span>
+              <span class="portal-card-meta">schema <code>lusefin</code></span>
+              <span class="portal-card-hint">Financeiro — schema lusefin</span>
+            </a>
+          </li>
+          <li>
+            <a
+              class="portal-card"
+              href="casarotaria/"
+              aria-label="CasaRotaria: schema casarotaria"
+            >
+              <span class="portal-card-label">CasaRotaria</span>
+              <span class="portal-card-meta"
+                >schema <code>casarotaria</code></span
+              >
+              <span class="portal-card-hint"
+                >Casa Rotaria — schema casarotaria</span
+              >
+            </a>
+          </li>
+        </ul>
+
+        <p class="portal-foot">
+          Conexão futura via <code>LUSEAN_URL</code> (mesmo banco lusean). Nesta
+          MVP estática não há consulta ao banco — APIs virão na próxima etapa
+          (Node/PHP).
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
