@@ -1,8 +1,11 @@
 -- Unified claimant intake table for SFraga Advocacia
 -- Applied to local PGlite when DATABASE_URL is unset, and to hosted Postgres
--- via `npm run build` → scripts/migrate.mjs (tracked in schema_migrations).
+-- via `npm run build` → scripts/migrate.mjs (tracked in sfragaadv.schema_migrations).
+-- App tables live in schema `sfragaadv`; `public` is reserved for shared tables.
 
-CREATE TABLE IF NOT EXISTS reclamante (
+CREATE SCHEMA IF NOT EXISTS sfragaadv;
+
+CREATE TABLE IF NOT EXISTS sfragaadv.reclamante (
   id                              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   gestante                        boolean NOT NULL,
@@ -164,14 +167,14 @@ CREATE TABLE IF NOT EXISTS reclamante (
 );
 
 CREATE INDEX IF NOT EXISTS idx_reclamante_gestante
-  ON reclamante (gestante);
+  ON sfragaadv.reclamante (gestante);
 
 CREATE INDEX IF NOT EXISTS idx_reclamante_submitted_at
-  ON reclamante (submitted_at DESC);
+  ON sfragaadv.reclamante (submitted_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_reclamante_telefone
-  ON reclamante (telefone);
+  ON sfragaadv.reclamante (telefone);
 
 CREATE INDEX IF NOT EXISTS idx_reclamante_tally_submission_id
-  ON reclamante (tally_submission_id)
+  ON sfragaadv.reclamante (tally_submission_id)
   WHERE tally_submission_id IS NOT NULL;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { databaseDiagnostics } from "@/lib/db";
+import { APP_SCHEMA, databaseDiagnostics } from "@/lib/db";
 import { insertReclamante } from "@/lib/ingest";
 import type { Answers, FormSource } from "@/lib/form-types";
 
@@ -28,6 +28,7 @@ export async function POST(request: Request) {
       ok: true,
       id: result.id,
       mode: result.mode,
+      schema: APP_SCHEMA,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao gravar";
@@ -45,6 +46,8 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     database: diag.mode === "postgres" ? "configured" : "pglite_fallback",
+    schema: APP_SCHEMA,
+    table: `${APP_SCHEMA}.reclamante`,
     source: diag.source,
     host: diag.host,
     luseanSet: diag.luseanSet,

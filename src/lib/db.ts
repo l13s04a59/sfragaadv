@@ -154,6 +154,7 @@ async function getExternalPool(): Promise<pg.Pool> {
       connectionString: databaseUrl,
       max: 5,
       ssl: false,
+      options: "-c search_path=sfragaadv,public",
     });
     try {
       await ensureExternalMigrations(pool);
@@ -178,11 +179,13 @@ async function getExternalPool(): Promise<pg.Pool> {
 async function ensureExternalMigrations(db: pg.Pool): Promise<void> {
   const client = await db.connect();
   try {
+    await client.query("create schema if not exists sfragaadv");
+    await client.query("set search_path to sfragaadv, public");
     await client.query(
-      "create table if not exists schema_migrations (name text primary key, applied_at timestamptz not null default now())",
+      "create table if not exists sfragaadv.schema_migrations (name text primary key, applied_at timestamptz not null default now())",
     );
     const done = new Set(
-      (await client.query("select name from schema_migrations")).rows.map(
+      (await client.query("select name from sfragaadv.schema_migrations")).rows.map(
         (r: { name: string }) => r.name,
       ),
     );
@@ -196,7 +199,10 @@ async function ensureExternalMigrations(db: pg.Pool): Promise<void> {
       await client.query("begin");
       try {
         await client.query(sqlText);
-        await client.query("insert into schema_migrations (name) values ($1)", [file]);
+        await client.query(
+          "insert into sfragaadv.schema_migrations (name) values ($1)",
+          [file],
+        );
         await client.query("commit");
       } catch (error) {
         await client.query("rollback");
@@ -249,6 +255,10 @@ async function startLocal(): Promise<PGlite> {
       SELECT '00000000-0000-4000-8000-000000000000'::uuid;
     $$ LANGUAGE SQL;
   `);
+  await db.exec(`
+    CREATE SCHEMA IF NOT EXISTS sfragaadv;
+    SET search_path TO sfragaadv, public;
+  `);
 
   const migrationsDir = path.join(process.cwd(), "migrations");
   const files = (await readdir(migrationsDir).catch(() => []))
@@ -261,15 +271,18 @@ async function startLocal(): Promise<PGlite> {
   return db;
 }
 
+/** App tables live in schema sfragaadv (not public). */
+export const APP_SCHEMA = "sfragaadv";
+
 export async function applyOptionalIndexes(): Promise<{ applied: boolean; reason?: string }> {
   if (!hasExternalDatabase()) {
     return { applied: false, reason: "no_external_database" };
   }
   const statements = [
-    `CREATE INDEX IF NOT EXISTS idx_reclamante_gestante ON reclamante (gestante)`,
-    `CREATE INDEX IF NOT EXISTS idx_reclamante_submitted_at ON reclamante (submitted_at DESC)`,
-    `CREATE INDEX IF NOT EXISTS idx_reclamante_telefone ON reclamante (telefone)`,
-    `CREATE INDEX IF NOT EXISTS idx_reclamante_tally_submission_id ON reclamante (tally_submission_id) WHERE tally_submission_id IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_reclamante_gestante ON sfragaadv.reclamante (gestante)`,
+    `CREATE INDEX IF NOT EXISTS idx_reclamante_submitted_at ON sfragaadv.reclamante (submitted_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_reclamante_telefone ON sfragaadv.reclamante (telefone)`,
+    `CREATE INDEX IF NOT EXISTS idx_reclamante_tally_submission_id ON sfragaadv.reclamante (tally_submission_id) WHERE tally_submission_id IS NOT NULL`,
   ];
   for (const statement of statements) {
     await sql(statement);

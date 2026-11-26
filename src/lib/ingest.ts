@@ -27,7 +27,7 @@ export async function insertReclamante(
   const row = mapAnswersToReclamante(answers, source, earlyExit);
   const placeholders = INSERT_COLUMNS.map((_, i) => `$${i + 1}`).join(", ");
   const query = `
-    INSERT INTO reclamante (${INSERT_COLUMNS.join(", ")})
+    INSERT INTO sfragaadv.reclamante (${INSERT_COLUMNS.join(", ")})
     VALUES (${placeholders})
     RETURNING id
   `;
