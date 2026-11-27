@@ -3,6 +3,7 @@ import {
   hasExternalDatabase,
   sql,
 } from "@/lib/db";
+import { countLinkedPessoas, listLinkedPessoas, type LinkedPessoa } from "@/lib/pessoa";
 
 export type SchemaTableRow = {
   schema: string;
@@ -15,7 +16,9 @@ export type SfragaOverview = {
   source: string | null;
   host: string | null;
   reclamanteCount: number | null;
+  pessoaCount: number | null;
   tbescolCount: number | null;
+  pessoas: LinkedPessoa[];
   tables: SchemaTableRow[];
   error?: string;
 };
@@ -31,7 +34,8 @@ async function safeCount(query: string): Promise<number | null> {
 
 /**
  * Read-only prototype for SFRAGA ADVOCACIA: counts and table list in
- * schemas `sfragaadv` and `public`. Never returns connection secrets.
+ * schemas `sfragaadv` and `public`. People list only via active
+ * `sfragaadv.pessoa` links. Never returns connection secrets.
  */
 export async function getSfragaOverview(): Promise<SfragaOverview> {
   const diag = databaseDiagnostics();
@@ -42,23 +46,28 @@ export async function getSfragaOverview(): Promise<SfragaOverview> {
   };
 
   try {
-    const [reclamanteCount, tbescolCount, tableRows] = await Promise.all([
-      safeCount("select count(*)::int as count from sfragaadv.reclamante"),
-      safeCount("select count(*)::int as count from public.tbescol"),
-      sql<{ schema: string; name: string }>(
-        `select table_schema as schema, table_name as name
-         from information_schema.tables
-         where table_schema in ('sfragaadv', 'public')
-           and table_type = 'BASE TABLE'
-         order by table_schema, table_name`,
-      ),
-    ]);
+    const [reclamanteCount, tbescolCount, pessoaCount, pessoas, tableRows] =
+      await Promise.all([
+        safeCount("select count(*)::int as count from sfragaadv.reclamante"),
+        safeCount("select count(*)::int as count from public.tbescol"),
+        countLinkedPessoas("sfragaadv"),
+        listLinkedPessoas("sfragaadv", 20),
+        sql<{ schema: string; name: string }>(
+          `select table_schema as schema, table_name as name
+           from information_schema.tables
+           where table_schema in ('sfragaadv', 'public')
+             and table_type = 'BASE TABLE'
+           order by table_schema, table_name`,
+        ),
+      ]);
 
     return {
       ok: true,
       ...base,
       reclamanteCount,
+      pessoaCount,
       tbescolCount,
+      pessoas,
       tables: tableRows.map((r) => ({ schema: r.schema, name: r.name })),
     };
   } catch (error) {
@@ -71,7 +80,9 @@ export async function getSfragaOverview(): Promise<SfragaOverview> {
       ok: false,
       ...base,
       reclamanteCount: null,
+      pessoaCount: null,
       tbescolCount: null,
+      pessoas: [],
       tables: [],
       error: safe,
     };
@@ -80,7 +91,7 @@ export async function getSfragaOverview(): Promise<SfragaOverview> {
 
 export function sfragaOverviewHint(): string {
   if (hasExternalDatabase()) {
-    return "Conectado via LUSEAN_URL (ou alias externo). Somente leitura.";
+    return "Conectado via LUSEAN_URL (ou alias externo). Somente leitura; pessoas só com vínculo sfragaadv.pessoa.";
   }
   return "Sem LUSEAN_URL utilizável — prévia em PGlite local (demo).";
 }

@@ -7,10 +7,12 @@
     "build": "next build && node scripts/migrate.mjs",
     "start": "next start",
     "lint": "next lint",
-    "migrate": "node scripts/migrate.mjs"
+    "migrate": "node scripts/migrate.mjs",
+    "create-app-user": "node scripts/create-app-user.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.17",
+    "bcryptjs": "^3.0.3",
     "next": "^15.5.29",
     "pg": "^8.23.1",
     "react": "^19.0.0",
@@ -18,6 +20,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",

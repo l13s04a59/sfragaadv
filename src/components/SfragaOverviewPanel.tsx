@@ -27,6 +27,12 @@ export function SfragaOverviewPanel({ overview }: Props) {
           </dd>
         </div>
         <div>
+          <dt>sfragaadv.pessoa</dt>
+          <dd>
+            {overview.pessoaCount === null ? "—" : overview.pessoaCount}
+          </dd>
+        </div>
+        <div>
           <dt>public.tbescol</dt>
           <dd>
             {overview.tbescolCount === null ? "—" : overview.tbescolCount}
@@ -45,6 +51,24 @@ export function SfragaOverviewPanel({ overview }: Props) {
           </dd>
         </div>
       </dl>
+
+      <h3 className="portal-data-subtitle">Pessoas (vínculo ativo)</h3>
+      {overview.pessoas.length === 0 ? (
+        <p className="portal-data-hint">
+          Nenhuma pessoa com vínculo em <code>sfragaadv.pessoa</code>.
+        </p>
+      ) : (
+        <ul className="portal-table-list" role="list">
+          {overview.pessoas.map((p) => (
+            <li key={p.cdpes_id}>
+              <code>
+                #{p.cdpes_id} {p.nome || "(sem nome)"}
+                {p.cpf ? ` · CPF ${p.cpf}` : ""}
+              </code>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <h3 className="portal-data-subtitle">Tabelas (public + sfragaadv)</h3>
       {overview.tables.length === 0 ? (

@@ -1,5 +1,7 @@
+export type PortalSchemaId = "casarotaria" | "sfragaadv" | "lusefin";
+
 export type PortalSchema = {
-  id: string;
+  id: PortalSchemaId;
   label: string;
   description: string;
   /** When true, the portal page may load read-only overview data. */
@@ -28,10 +30,12 @@ export const PORTAL_SCHEMAS: readonly PortalSchema[] = [
   },
 ] as const;
 
-export const PORTAL_SCHEMA_IDS = PORTAL_SCHEMAS.map((s) => s.id);
+export const PORTAL_SCHEMA_IDS: readonly PortalSchemaId[] = PORTAL_SCHEMAS.map(
+  (s) => s.id,
+);
 
-export function isPortalSchemaId(value: string): boolean {
-  return PORTAL_SCHEMA_IDS.includes(value);
+export function isPortalSchemaId(value: string): value is PortalSchemaId {
+  return (PORTAL_SCHEMA_IDS as readonly string[]).includes(value);
 }
 
 export function getPortalSchema(id: string): PortalSchema | undefined {
