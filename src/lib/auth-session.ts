@@ -13,13 +13,28 @@ export type SessionPayload = {
   exp: number;
 };
 
-function sessionSecret(): string {
+/** True when LUSEAN_SESSION_SECRET (or SESSION_SECRET) is configured. */
+export function hasSessionSecret(): boolean {
+  return Boolean(
+    process.env.LUSEAN_SESSION_SECRET?.trim() ||
+      process.env.SESSION_SECRET?.trim(),
+  );
+}
+
+/**
+ * Portal sessions require an explicit secret — no built-in fallback
+ * (a hardcoded key would allow forging cookies in the published app).
+ */
+function requireSessionSecret(): string {
   const fromEnv =
     process.env.LUSEAN_SESSION_SECRET?.trim() ||
     process.env.SESSION_SECRET?.trim();
-  if (fromEnv) return fromEnv;
-  // Dev / PGlite only — set LUSEAN_SESSION_SECRET in production.
-  return "lusean-dev-session-secret-change-me";
+  if (!fromEnv) {
+    throw new Error(
+      "LUSEAN_SESSION_SECRET é obrigatório para sessões do portal (sem valor padrão).",
+    );
+  }
+  return fromEnv;
 }
 
 function b64urlFromBytes(bytes: Uint8Array): string {
@@ -51,7 +66,7 @@ function bytesFromB64url(s: string): Uint8Array {
 async function hmacKey(): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(sessionSecret()),
+    new TextEncoder().encode(requireSessionSecret()),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign", "verify"],
@@ -90,13 +105,18 @@ export async function signSession(
 export async function verifySession(
   token: string | undefined | null,
 ): Promise<SessionPayload | null> {
-  if (!token) return null;
+  if (!token || !hasSessionSecret()) return null;
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [data, sig] = parts;
   if (!data || !sig) return null;
 
-  const expected = await signData(data);
+  let expected: string;
+  try {
+    expected = await signData(data);
+  } catch {
+    return null;
+  }
   try {
     const a = bytesFromB64url(sig);
     const b = bytesFromB64url(expected);
