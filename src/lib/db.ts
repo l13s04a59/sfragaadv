@@ -66,20 +66,37 @@ export function resolveDatabaseUrl(): ResolvedDatabaseUrl | null {
   return null;
 }
 
-/** Ensure sslmode=disable for hosts that reject SSL (never log the URL). */
+/**
+ * Pass through the connection string without forcing sslmode.
+ * Honor whatever sslmode the operator set on LUSEAN_URL (require / disable / …).
+ * Never log the URL.
+ */
 export function normalizeDatabaseUrl(url: string): string {
-  if (!url) return "";
+  return url || "";
+}
+
+/**
+ * SSL option for node-pg from the URL's sslmode (if any).
+ * - disable → ssl off
+ * - require / prefer / verify-* → TLS on (require uses rejectUnauthorized:false
+ *   for hosts with self-signed certs; verify-full keeps verification)
+ * - omitted → undefined (libpq/pg defaults; prefer TLS when the server offers it)
+ */
+export function sslOptionFromDatabaseUrl(
+  url: string,
+): boolean | { rejectUnauthorized: boolean } | undefined {
   try {
-    const u = new URL(url);
-    if (!u.searchParams.has("sslmode")) {
-      u.searchParams.set("sslmode", "disable");
+    const mode = (new URL(url).searchParams.get("sslmode") || "").toLowerCase();
+    if (mode === "disable") return false;
+    if (mode === "require" || mode === "prefer" || mode === "allow") {
+      return { rejectUnauthorized: false };
     }
-    return u.toString();
+    if (mode === "verify-ca" || mode === "verify-full") {
+      return { rejectUnauthorized: true };
+    }
+    return undefined;
   } catch {
-    if (!/[?&]sslmode=/.test(url)) {
-      return url.includes("?") ? `${url}&sslmode=disable` : `${url}?sslmode=disable`;
-    }
-    return url;
+    return undefined;
   }
 }
 
@@ -150,10 +167,11 @@ async function getExternalPool(): Promise<pg.Pool> {
       console.info(`[db] using ${resolved.source} host=${resolved.host}`);
       loggedSource = resolved.source;
     }
+    const ssl = sslOptionFromDatabaseUrl(databaseUrl);
     pool ??= new pg.Pool({
       connectionString: databaseUrl,
       max: 5,
-      ssl: false,
+      ...(ssl !== undefined ? { ssl } : {}),
       options: "-c search_path=sfragaadv,public",
     });
     try {

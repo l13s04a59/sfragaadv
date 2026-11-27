@@ -1,21 +1,39 @@
 import { NextResponse } from "next/server";
 import {
+  hasSessionSecret,
   SESSION_COOKIE,
   sessionCookieOptions,
   signSession,
 } from "@/lib/auth-session";
 import { authenticateUser } from "@/lib/auth-user";
+import {
+  assertLoginAllowed,
+  clientIpFromRequest,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from "@/lib/login-throttle";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    if (!hasSessionSecret()) {
+      return NextResponse.json(
+        {
+          error:
+            "Sessão do portal indisponível: defina LUSEAN_SESSION_SECRET no ambiente.",
+        },
+        { status: 503 },
+      );
+    }
+
     const body = (await request.json()) as {
       login?: string;
       password?: string;
     };
     const login = typeof body.login === "string" ? body.login : "";
     const password = typeof body.password === "string" ? body.password : "";
+    const ip = clientIpFromRequest(request);
 
     if (!login.trim() || !password) {
       return NextResponse.json(
@@ -24,13 +42,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const blocked = assertLoginAllowed(ip, login);
+    if (blocked) {
+      return NextResponse.json({ error: blocked }, { status: 429 });
+    }
+
     const user = await authenticateUser(login, password);
     if (!user) {
+      recordLoginFailure(ip, login);
       return NextResponse.json(
         { error: "Login ou senha inválidos." },
         { status: 401 },
       );
     }
+
+    recordLoginSuccess(ip, login);
 
     const token = await signSession({
       userId: user.id,

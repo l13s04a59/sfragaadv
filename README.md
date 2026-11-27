@@ -15,7 +15,7 @@ Aplicação Next.js (App Router) que substitui os questionários Tally de triage
 
 ```bash
 cp .env.example .env.local
-# preencha DATABASE_URL com ?sslmode=disable se o servidor não aceitar SSL
+# prefer LUSEAN_URL; set sslmode=require (TLS) or disable only if the server rejects SSL
 npm install
 npm run dev
 ```

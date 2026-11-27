@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const safe =
       /password|connection string|SASL|authentication/i.test(message) &&
       !/source=|host=/i.test(message)
-        ? "Falha ao conectar ou gravar no banco. Verifique LUSEAN_URL (sslmode=disable)."
+        ? "Falha ao conectar ou gravar no banco. Verifique LUSEAN_URL (e sslmode)."
         : message;
     return NextResponse.json({ error: safe }, { status: 500 });
   }
