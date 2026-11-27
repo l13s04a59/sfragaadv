@@ -5,8 +5,8 @@ Aplicação Next.js (App Router) que substitui os questionários Tally de triage
 ## Rotas
 
 - `/` — links de teste
-- `/portal` — **LUSEAN SISTEMAS** (3 sistemas / schemas)
-- `/portal/casarotaria`, `/portal/sfragaadv`, `/portal/lusefin` — por schema (prévia de dados só em sfragaadv)
+- `/portal` — **LUSEAN SISTEMAS** (login; após auth redireciona só ao `schema_permitido`)
+- `/portal/casarotaria`, `/portal/sfragaadv`, `/portal/lusefin` — protegidos por sessão (prévia de dados só em sfragaadv)
 - `/formulario/trabalhista` — reclamante geral (`gestante=false`, `form_source=trabalhista`)
 - `/formulario/gestante` — gestante (`gestante=true`, `form_source=gestante`)
 - `/obrigado` — confirmação após envio
@@ -24,16 +24,14 @@ Preferir `LUSEAN_URL` (Postgres lusean). Sem URL externa válida, o envio usa PG
 
 ### Portal — LUSEAN SISTEMAS
 
-UI em português, título centrado **LUSEAN SISTEMAS**, botões:
+UI em português, título centrado **LUSEAN SISTEMAS**. Exige login (`public.app_user`); a sessão carrega um único `schema_permitido` (`sfragaadv` | `lusefin` | `casarotaria`) — sem chooser aberto dos três sistemas. Prévia de dados (incl. pessoas via `sfragaadv.pessoa`) só em SFRAGA ADVOCACIA.
 
-1. **CASA ROTÁRIA** → `casarotaria` (placeholder)
-2. **SFRAGA ADVOCACIA** → `sfragaadv` (prévia: contagens + tabelas em `public`/`sfragaadv` via `LUSEAN_URL`)
-3. **LUSEAN FINANÇAS** → `lusefin` (placeholder)
+Primeiro usuário: `scripts/create-app-user.mjs` (bcrypt via env). Ver Project store `docs/portal-primeiro-login.md`.
 
 ### Hostinger (estático) — site **app-lusean**
 
-Pasta `hostinger/app-lusean/` (HTML/CSS) para upload no site Hostinger nomeado **app-lusean**. Passo a passo: `hostinger/README.md` e Project store `docs/portal-esquemas.md`. Prévia de dados Sfraga não roda no estático — só na app Next.
+Pasta `hostinger/app-lusean/` (HTML/CSS) espelha a tela de login (sem auth real). Passo a passo: `hostinger/README.md` e Project store `docs/portal-esquemas.md`. Login + prévia Sfraga só na app Next.
 
-O app Next completo (formulários + API + prévia) continua em Node (Cursor Apps / VPS). Não use `output: 'export'` no Next raiz — as rotas `/api/*` quebrariam.
+O app Next completo (formulários + API + portal) continua em Node (Cursor Apps / VPS). Não use `output: 'export'` no Next raiz — as rotas `/api/*` quebrariam.
 
-Documentação: Project store `docs/formularios-intake.md` e `docs/portal-esquemas.md`.
+Documentação: Project store `docs/formularios-intake.md`, `docs/portal-esquemas.md`, `docs/multi-tenant-pessoas-acesso.md`, `docs/portal-primeiro-login.md`.

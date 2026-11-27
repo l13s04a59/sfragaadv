@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LUSEAN SISTEMAS</title>
+    <title>LUSEAN SISTEMAS — Entrar</title>
     <meta
       name="description"
-      content="Selecione o sistema / schema PostgreSQL — app-lusean."
+      content="Login do portal LUSEAN SISTEMAS — app-lusean."
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -15,51 +15,43 @@
       <section class="portal-hero portal-hero-center">
         <h1 class="portal-brand">LUSEAN SISTEMAS</h1>
         <p class="portal-lead">
-          Escolha o sistema para continuar. Cada botão seleciona o schema
-          PostgreSQL correspondente no banco lusean.
+          Entre com seu login. Após autenticar, o portal abre somente o sistema
+          liberado para a sua conta (um schema por sessão).
         </p>
 
-        <ul class="portal-grid portal-grid-center" role="list">
-          <li>
-            <a
-              class="portal-btn"
-              href="casarotaria/"
-              aria-label="CASA ROTÁRIA: schema casarotaria"
-            >
-              <span class="portal-btn-label">CASA ROTÁRIA</span>
-              <span class="portal-btn-meta"
-                >schema <code>casarotaria</code></span
-              >
-            </a>
-          </li>
-          <li>
-            <a
-              class="portal-btn"
-              href="sfragaadv/"
-              aria-label="SFRAGA ADVOCACIA: schema sfragaadv"
-            >
-              <span class="portal-btn-label">SFRAGA ADVOCACIA</span>
-              <span class="portal-btn-meta"
-                >schema <code>sfragaadv</code></span
-              >
-            </a>
-          </li>
-          <li>
-            <a
-              class="portal-btn"
-              href="lusefin/"
-              aria-label="LUSEAN FINANÇAS: schema lusefin"
-            >
-              <span class="portal-btn-label">LUSEAN FINANÇAS</span>
-              <span class="portal-btn-meta">schema <code>lusefin</code></span>
-            </a>
-          </li>
-        </ul>
+        <form class="portal-login" action="#" method="post" onsubmit="return false;">
+          <label class="portal-login-field">
+            <span>Login</span>
+            <input name="login" autocomplete="username" required disabled />
+          </label>
+          <label class="portal-login-field">
+            <span>Senha</span>
+            <input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              disabled
+            />
+          </label>
+          <button class="btn btn-primary" type="button" disabled>
+            Entrar
+          </button>
+        </form>
+
+        <p class="portal-note">
+          Pack estático Hostinger (<strong>app-lusean</strong>) não autentica
+          contra o banco. Use a app Next (Cursor) em <code>/portal</code> com
+          <code>LUSEAN_URL</code> e usuários em <code>public.app_user</code>.
+          Não há seletor aberto dos três sistemas para quem já está logado.
+        </p>
 
         <p class="portal-foot">
-          Site Hostinger: <strong>app-lusean</strong>. Esta pasta é estática —
-          prévia de dados do SFRAGA ADVOCACIA exige a app Next (Cursor) com
-          <code>LUSEAN_URL</code>.
+          Placeholders por schema:
+          <a href="casarotaria/">casarotaria</a> ·
+          <a href="sfragaadv/">sfragaadv</a> ·
+          <a href="lusefin/">lusefin</a>
+          (somente referência estática).
         </p>
       </section>
     </main>

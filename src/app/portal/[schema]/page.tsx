@@ -1,19 +1,15 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PortalLogoutButton } from "@/components/PortalLogoutButton";
 import { SfragaOverviewPanel } from "@/components/SfragaOverviewPanel";
-import {
-  getPortalSchema,
-  PORTAL_SCHEMA_IDS,
-} from "@/lib/portal-schemas";
+import { getPortalSchema } from "@/lib/portal-schemas";
+import { requirePortalSchemaAccess } from "@/lib/portal-auth";
 import { getSfragaOverview } from "@/lib/portal-sfraga-overview";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ schema: string }>;
 };
-
-export function generateStaticParams() {
-  return PORTAL_SCHEMA_IDS.map((schema) => ({ schema }));
-}
 
 export async function generateMetadata({ params }: PageProps) {
   const { schema: id } = await params;
@@ -32,6 +28,8 @@ export default async function PortalSchemaPage({ params }: PageProps) {
   const schema = getPortalSchema(id);
   if (!schema) notFound();
 
+  const session = await requirePortalSchemaAccess(schema.id);
+
   const overview =
     schema.hasDataPreview && schema.id === "sfragaadv"
       ? await getSfragaOverview()
@@ -40,10 +38,12 @@ export default async function PortalSchemaPage({ params }: PageProps) {
   return (
     <main className="portal">
       <section className="portal-hero portal-hero-center portal-placeholder">
-        <p className="portal-eyebrow">Ambiente selecionado</p>
+        <p className="portal-eyebrow">Ambiente liberado</p>
         <h1 className="portal-brand portal-brand-sm">{schema.label}</h1>
         <p className="portal-lead">
           Schema <code className="portal-schema-code">{schema.id}</code>
+          {" · "}
+          usuário <code className="portal-schema-code">{session.login}</code>
         </p>
 
         {overview ? (
@@ -56,9 +56,7 @@ export default async function PortalSchemaPage({ params }: PageProps) {
         )}
 
         <div className="portal-actions portal-actions-center">
-          <Link className="btn btn-primary" href="/portal">
-            Voltar aos sistemas
-          </Link>
+          <PortalLogoutButton />
         </div>
       </section>
     </main>

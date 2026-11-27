@@ -1,41 +1,44 @@
-import Link from "next/link";
-import { PORTAL_SCHEMAS } from "@/lib/portal-schemas";
+import { redirect } from "next/navigation";
+import { PortalLoginForm } from "@/components/PortalLoginForm";
+import { getPortalSession } from "@/lib/portal-auth";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "LUSEAN SISTEMAS",
-  description: "Selecione o sistema / schema PostgreSQL.",
+  title: "LUSEAN SISTEMAS — Entrar",
+  description: "Login do portal LUSEAN SISTEMAS.",
 };
 
-export default function PortalPage() {
+type PageProps = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+export default async function PortalPage({ searchParams }: PageProps) {
+  const session = await getPortalSession();
+  if (session) {
+    redirect(`/portal/${session.schema}`);
+  }
+
+  const params = await searchParams;
+  const nextPath =
+    typeof params.next === "string" && params.next.startsWith("/portal/")
+      ? params.next
+      : null;
+
   return (
     <main className="portal">
       <section className="portal-hero portal-hero-center">
         <h1 className="portal-brand">LUSEAN SISTEMAS</h1>
         <p className="portal-lead">
-          Escolha o sistema para continuar. Cada botão seleciona o schema
-          PostgreSQL correspondente no banco lusean.
+          Entre com seu login. Após autenticar, o portal abre somente o sistema
+          liberado para a sua conta (um schema por sessão).
         </p>
 
-        <ul className="portal-grid portal-grid-center" role="list">
-          {PORTAL_SCHEMAS.map((schema) => (
-            <li key={schema.id}>
-              <Link
-                className="portal-btn"
-                href={`/portal/${schema.id}`}
-                aria-label={`${schema.label}: schema ${schema.id}`}
-              >
-                <span className="portal-btn-label">{schema.label}</span>
-                <span className="portal-btn-meta">
-                  schema <code>{schema.id}</code>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <PortalLoginForm nextPath={nextPath} />
 
         <p className="portal-foot">
-          Conexão via <code>LUSEAN_URL</code>. Prévia de dados disponível só em
-          SFRAGA ADVOCACIA nesta etapa.
+          Conexão via <code>LUSEAN_URL</code>. Sem seletor aberto dos três
+          sistemas — o schema vem de <code>schema_permitido</code>.
         </p>
       </section>
     </main>
